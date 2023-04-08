@@ -277,7 +277,8 @@ class CML2Generator {
      * @throws Exception
      */
     private function genGroups (int $count, int $level) {
-        if (!$level) return ['Группы' => ''];
+        /* if (!$level) return ['Группы' => '']; */
+        if (!$level) return [];
         if ($count > 0) $count = -pow($count, 1 / $level);
         $groups = [];
         for ($i = round(abs((0.8 + rand() / getrandmax() * 0.4) * $count)); $i--;) {
@@ -285,10 +286,10 @@ class CML2Generator {
             if ($level == 1) $this->guidGroups[] = $guid;
             $groups[] = array_merge([
                 'Ид' => $guid,
-                'ПометкаУдаления' => 'false',
+                /* 'ПометкаУдаления' => 'false', */
                 'Наименование' => $this->genRandPhrase(),
-                'Описание' => '',
-                'БитриксСортировка' => '999999',
+                /* 'Описание' => '', */
+                /* 'БитриксСортировка' => '999999', */
             ], $this->genGroups($count, $level - 1));
         }
         return ['Группы' => ['Группа' => $groups]];
@@ -312,7 +313,7 @@ class CML2Generator {
             $units[] = [
                 'Ид' => 750 + $i,
                 'Код' => 750 + $i,
-                'ПометкаУдаления' => 'false',
+                /* 'ПометкаУдаления' => 'false', */
                 'НаименованиеПолное' => $name,
                 'НаименованиеКраткое' => $short,
             ];
@@ -358,9 +359,9 @@ class CML2Generator {
             $group = $this->guidGroups[array_rand($this->guidGroups)];
             $prod = [
                 'Ид' => $guid,
-                'ПометкаУдаления' => 'false',
+                /* 'ПометкаУдаления' => 'false', */
                 'Наименование' => $this->genRandPhrase(),
-                'Описание' => '',
+                /* 'Описание' => '', */
                 'Группы' => [
                     'Ид' => $group, //TODO: может относиться к нескольким категориям
                 ],
@@ -390,7 +391,7 @@ class CML2Generator {
             $prods[] = $prod;
         }
         return ['Каталог' => [
-            '@СодержитТолькоИзменения' => 'true',
+            /* '@СодержитТолькоИзменения' => 'false', */
             'Ид' => $this->guidCatalog,
             'ИдКлассификатора' => $this->guidClassifier,
             'Наименование' => 'Каталог товаров',
@@ -404,18 +405,29 @@ class CML2Generator {
      * @throws Exception
      */
     private function genClassifier () {
+        return [
+            'Классификатор' => array_merge(
+                [
+                    /* '@СодержитТолькоИзменения' => 'true', */
+                    'Ид' => $this->guidClassifier,
+                    'Наименование' => 'Каталог товаров',
+                ],
+                $this->genGroups($this->config['categories-count'], $this->config['categories-level']),
+                $this->genUnits($this->config['units-count'])
+            )
+        ];
+    }
+
+    /**
+     * Генерация import.xml
+     * @throws Exception
+     */
+    private function genImport () {
         $cml = CommerceMLElement::getInstance();
-        $cls = $cml->addFromArray([
-            'Классификатор' => [
-                '@СодержитТолькоИзменения' => 'true',
-                'Ид' => $this->guidClassifier,
-                'Наименование' => 'Каталог товаров',
-            ]
-        ]);
-        $cls->addFromArray($this->genGroups($this->config['categories-count'], $this->config['categories-level']));
-        $cls->addFromArray($this->genUnits($this->config['units-count']));
-        $cls->addFromArray($this->genCatalog($this->config['products-count']));
-        $cml->asEncodingXML('windows-1251', $this->config['export-path'] . 'import.xml');
+        $cls = $cml->addFromArray(
+            $this->genClassifier() + $this->genCatalog($this->config['products-count'])
+        );
+        $cml->asEncodingXML('utf-8', $this->config['export-path'] . 'import.xml');
     }
     
     /**
@@ -426,7 +438,7 @@ class CML2Generator {
         $cml = CommerceMLElement::getInstance();
         $pack = $cml->addFromArray([
             'ПакетПредложений' => [
-                '@СодержитТолькоИзменения' => 'true',
+                /* '@СодержитТолькоИзменения' => 'true', */
                 'Ид' => $this->guid(),
                 'Наименование' => 'Торговые предложения',
                 'ИдКаталога' => $this->guidCatalog,
@@ -453,7 +465,7 @@ class CML2Generator {
             ];
         }
         $pack->addFromArray(['Предложения' => ['Предложение' => $offers]]);
-        $cml->asEncodingXML('windows-1251', $this->config['export-path'] . 'offers.xml');
+        $cml->asEncodingXML('utf-8', $this->config['export-path'] . 'offers.xml');
     }
     
     /**
@@ -464,7 +476,7 @@ class CML2Generator {
         $cml = CommerceMLElement::getInstance();
         $pack = $cml->addFromArray([
             'ПакетПредложений' => [
-                '@СодержитТолькоИзменения' => 'true',
+                /* '@СодержитТолькоИзменения' => 'true', */
                 'Ид' => $this->guid(),
                 'Наименование' => 'Складские остатки',
                 'ИдКаталога' => $this->guidCatalog,
@@ -484,7 +496,7 @@ class CML2Generator {
             ];
         }
         $pack->addFromArray(['Предложения' => ['Предложение' => $offers]]);
-        $cml->asEncodingXML('windows-1251', $this->config['export-path'] . 'rests.xml');
+        $cml->asEncodingXML('utf-8', $this->config['export-path'] . 'rests.xml');
     }
     
     /**
@@ -504,7 +516,7 @@ class CML2Generator {
      * @throws Exception
      */
     public function generateFiles () {
-        $this->genClassifier();
+        $this->genImport();
         $this->genOffers();
         $this->genRests();
         return [
@@ -719,7 +731,7 @@ class CML2Uploader {
         $part = 0;
         while (!feof($ofile)) {
             $part++;
-            $this->exchangeRequest('catalog.file', $nfile . ':' . $part, fread($ofile, $this->servSize));
+            $this->exchangeRequest('catalog.file', 'v8_' . $nfile . ':' . $part, fread($ofile, $this->servSize));
         }
         fclose($ofile);
         do $res = $this->exchangeRequest('catalog.import', $file . '.xml');
@@ -732,9 +744,9 @@ class CML2Uploader {
      */
     public function exchangeFull () {
         $this->exchangeCatalogFile('import');
-        $this->exchangeCatalogFile('offers');
-        $this->exchangeCatalogFile('rests');
-        $this->exchangeRequest('catalog.complete');
+        /* $this->exchangeCatalogFile('offers'); */
+        /* $this->exchangeCatalogFile('rests'); */
+        /* $this->exchangeRequest('catalog.complete'); */
         //TODO: импорт заказов, изменение статуса и экспорт заказов
     }
     
